@@ -393,11 +393,13 @@ class TaskDashboard {
             document.getElementById('taskDueDate').value = task.dueDate;
             document.getElementById('taskPriority').value = task.priority;
             document.getElementById('taskStatus').value = task.status;
+            document.getElementById('taskStatusSelect').value = task.status;
         } else {
             this.currentTaskId = null;
             title.textContent = 'New Task';
             deleteBtn.style.display = 'none';
             document.getElementById('taskStatus').value = status;
+            document.getElementById('taskStatusSelect').value = status;
         }
         
         modal.classList.add('active');
@@ -425,10 +427,17 @@ class TaskDashboard {
         if (this._eventListenersInitialized) return;
         this._eventListenersInitialized = true;
 
-        // Add task buttons
-        document.querySelectorAll('.add-task-btn').forEach(btn => {
+        // Sidebar buttons
+        document.querySelectorAll('.sidebar-btn').forEach(btn => {
             btn.addEventListener('click', () => {
-                this.openModal(null, btn.dataset.status);
+                const action = btn.dataset.action;
+                if (action === 'create-task') {
+                    this.openModal(null, 'todo');
+                }
+                
+                // Update active state
+                document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
             });
         });
 
@@ -500,7 +509,7 @@ class TaskDashboard {
             assignee: document.getElementById('taskAssignee').value,
             dueDate: document.getElementById('taskDueDate').value,
             priority: document.getElementById('taskPriority').value,
-            status: document.getElementById('taskStatus').value
+            status: document.getElementById('taskStatusSelect').value
         };
 
         if (!taskData.title) return;

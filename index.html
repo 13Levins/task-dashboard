@@ -24,14 +24,24 @@
         <p>Syncing with GitHub...</p>
     </div>
     
-    <main class="board">
+    <div id="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <nav class="sidebar-nav">
+                <button class="sidebar-btn active" data-action="create-task">
+                    <span class="sidebar-icon">➕</span>
+                    <span class="sidebar-label">Create Task</span>
+                </button>
+            </nav>
+        </aside>
+        
+        <main class="board">
         <div class="column" data-status="todo">
             <div class="column-header">
                 <h2>📋 To Do</h2>
                 <span class="task-count">0</span>
             </div>
             <div class="tasks" data-status="todo"></div>
-            <button class="add-task-btn" data-status="todo">+ Add Task</button>
         </div>
         
         <div class="column" data-status="in-progress">
@@ -40,7 +50,6 @@
                 <span class="task-count">0</span>
             </div>
             <div class="tasks" data-status="in-progress"></div>
-            <button class="add-task-btn" data-status="in-progress">+ Add Task</button>
         </div>
         
         <div class="column" data-status="done">
@@ -49,9 +58,9 @@
                 <span class="task-count">0</span>
             </div>
             <div class="tasks" data-status="done"></div>
-            <button class="add-task-btn" data-status="done">+ Add Task</button>
         </div>
     </main>
+    </div>
 
     <!-- Token Setup Modal -->
     <div class="modal-overlay" id="tokenModal">
@@ -109,6 +118,15 @@
                 <div class="form-group">
                     <label for="taskDescription">Description</label>
                     <textarea id="taskDescription" rows="3" placeholder="Add details..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskStatus">Status *</label>
+                    <select id="taskStatusSelect">
+                        <option value="todo">📋 To Do</option>
+                        <option value="in-progress">🔨 In Progress</option>
+                        <option value="done">✅ Done</option>
+                    </select>
                 </div>
                 
                 <div class="form-row">
