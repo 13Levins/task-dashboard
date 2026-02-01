@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <header>
+        <h1>🦊 Task Dashboard</h1>
+        <p class="subtitle">Sam & Milo's shared workspace</p>
+    </header>
+    
+    <main class="board">
+        <div class="column" data-status="todo">
+            <div class="column-header">
+                <h2>📋 To Do</h2>
+                <span class="task-count">0</span>
+            </div>
+            <div class="tasks" data-status="todo"></div>
+            <button class="add-task-btn" data-status="todo">+ Add Task</button>
+        </div>
+        
+        <div class="column" data-status="in-progress">
+            <div class="column-header">
+                <h2>🔨 In Progress</h2>
+                <span class="task-count">0</span>
+            </div>
+            <div class="tasks" data-status="in-progress"></div>
+            <button class="add-task-btn" data-status="in-progress">+ Add Task</button>
+        </div>
+        
+        <div class="column" data-status="done">
+            <div class="column-header">
+                <h2>✅ Done</h2>
+                <span class="task-count">0</span>
+            </div>
+            <div class="tasks" data-status="done"></div>
+            <button class="add-task-btn" data-status="done">+ Add Task</button>
+        </div>
+    </main>
+
+    <!-- Task Modal -->
+    <div class="modal-overlay" id="taskModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="modalTitle">New Task</h3>
+                <button class="close-btn" id="closeModal">&times;</button>
+            </div>
+            <form id="taskForm">
+                <input type="hidden" id="taskId">
+                <input type="hidden" id="taskStatus">
+                
+                <div class="form-group">
+                    <label for="taskTitle">Title *</label>
+                    <input type="text" id="taskTitle" required placeholder="What needs to be done?">
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskDescription">Description</label>
+                    <textarea id="taskDescription" rows="3" placeholder="Add details..."></textarea>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="taskAssignee">Assignee</label>
+                        <select id="taskAssignee">
+                            <option value="">Unassigned</option>
+                            <option value="sam">Sam</option>
+                            <option value="milo">Milo 🦊</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="taskDueDate">Due Date</label>
+                        <input type="date" id="taskDueDate">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="taskPriority">Priority</label>
+                    <select id="taskPriority">
+                        <option value="low">Low</option>
+                        <option value="medium" selected>Medium</option>
+                        <option value="high">High</option>
+                    </select>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" id="deleteTask" style="display: none;">Delete</button>
+                    <div class="spacer"></div>
+                    <button type="button" class="btn btn-secondary" id="cancelTask">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Task</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
