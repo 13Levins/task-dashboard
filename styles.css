@@ -619,3 +619,130 @@ textarea {
 .empty-state p {
     font-size: 0.9rem;
 }
+
+/* Task Details (Comments & Activity) */
+#taskDetails {
+    border-top: 1px solid var(--border-color);
+    padding: 1.25rem;
+    margin-top: 1rem;
+}
+
+.task-section {
+    margin-bottom: 1.5rem;
+}
+
+.task-section:last-child {
+    margin-bottom: 0;
+}
+
+.task-section h4 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-primary);
+}
+
+/* Comments */
+.comments-list {
+    max-height: 250px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+}
+
+.comment-item {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-bottom: 0.5rem;
+}
+
+.comment-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem;
+}
+
+.comment-author {
+    font-weight: 600;
+    color: var(--accent-blue);
+}
+
+.comment-time {
+    color: var(--text-secondary);
+}
+
+.comment-body {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+}
+
+.comment-form {
+    display: flex;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.comment-form textarea {
+    flex: 1;
+    min-height: 60px;
+    resize: vertical;
+}
+
+.btn-small {
+    padding: 0.5rem 1rem;
+    font-size: 0.9rem;
+}
+
+/* Activity */
+.activity-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.85rem;
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-icon {
+    flex-shrink: 0;
+    width: 24px;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-text {
+    color: var(--text-primary);
+    margin-bottom: 0.25rem;
+}
+
+.activity-time {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+}
+
+.activity-badge {
+    display: inline-block;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    font-weight: 500;
+    font-size: 0.8rem;
+}
