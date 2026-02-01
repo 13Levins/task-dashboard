@@ -270,7 +270,7 @@ class TaskDashboard {
     getAssigneeHTML(assignee) {
         const names = {
             'sam': 'Sam',
-            'milo': 'Milo 🦊'
+            'milo': 'Milo 😏'
         };
         return `<span class="assignee-badge ${assignee}">${names[assignee] || assignee}</span>`;
     }
@@ -427,9 +427,10 @@ class TaskDashboard {
         if (this._eventListenersInitialized) return;
         this._eventListenersInitialized = true;
 
-        // Sidebar buttons
-        document.querySelectorAll('.sidebar-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+        // Sidebar buttons - use event delegation on document to catch clicks even if buttons load later
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.sidebar-btn');
+            if (btn) {
                 const action = btn.dataset.action;
                 if (action === 'create-task') {
                     this.openModal(null, 'todo');
@@ -438,7 +439,7 @@ class TaskDashboard {
                 // Update active state
                 document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-            });
+            }
         });
 
         // Task card clicks (for editing)
