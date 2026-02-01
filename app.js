@@ -270,7 +270,7 @@ class TaskDashboard {
     getAssigneeHTML(assignee) {
         const names = {
             'sam': 'Sam',
-            'milo': 'Milo 🦊'
+            'milo': 'Milo 😏'
         };
         return `<span class="assignee-badge ${assignee}">${names[assignee] || assignee}</span>`;
     }
@@ -427,11 +427,19 @@ class TaskDashboard {
         if (this._eventListenersInitialized) return;
         this._eventListenersInitialized = true;
 
+        console.log('Setting up event listeners...');
+
         // Sidebar buttons
-        document.querySelectorAll('.sidebar-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
+        const sidebarButtons = document.querySelectorAll('.sidebar-btn');
+        console.log('Found sidebar buttons:', sidebarButtons.length);
+        
+        sidebarButtons.forEach(btn => {
+            console.log('Adding click listener to button:', btn.dataset.action);
+            btn.addEventListener('click', (e) => {
+                console.log('Sidebar button clicked!', btn.dataset.action);
                 const action = btn.dataset.action;
                 if (action === 'create-task') {
+                    console.log('Opening modal...');
                     this.openModal(null, 'todo');
                 }
                 
