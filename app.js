@@ -427,16 +427,12 @@ class TaskDashboard {
         if (this._eventListenersInitialized) return;
         this._eventListenersInitialized = true;
 
-        console.log('Setting up event listeners...');
-
         // Sidebar buttons - use event delegation on document to catch clicks even if buttons load later
         document.addEventListener('click', (e) => {
             const btn = e.target.closest('.sidebar-btn');
             if (btn) {
-                console.log('Sidebar button clicked!', btn.dataset.action);
                 const action = btn.dataset.action;
                 if (action === 'create-task') {
-                    console.log('Opening modal...');
                     this.openModal(null, 'todo');
                 }
                 
