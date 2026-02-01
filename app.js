@@ -1,85 +1,227 @@
-// Task Dashboard - Sam & Milo's Shared Workspace
+// Task Dashboard - GitHub Issues Backend
+// Sam & Milo's Shared Workspace
 
 class TaskDashboard {
     constructor() {
-        this.tasks = this.loadTasks();
+        this.repo = '13Levins/task-dashboard';
+        this.token = localStorage.getItem('github_token');
+        this.issues = [];
         this.currentTaskId = null;
         this.draggedTask = null;
         
         this.init();
     }
 
-    init() {
-        this.renderAllTasks();
-        this.setupEventListeners();
-        this.setupDragAndDrop();
-        this.updateAllCounts();
+    async init() {
+        if (!this.token) {
+            this.showTokenModal();
+            return;
+        }
+        
+        this.showLoading(true);
+        try {
+            await this.fetchIssues();
+            this.renderAllTasks();
+            this.setupEventListeners();
+            this.setupDragAndDrop();
+            this.updateAllCounts();
+        } catch (error) {
+            console.error('Init error:', error);
+            if (error.message.includes('401') || error.message.includes('403')) {
+                localStorage.removeItem('github_token');
+                this.showTokenModal('Invalid or expired token. Please enter a new one.');
+            } else {
+                this.showError('Failed to load tasks: ' + error.message);
+            }
+        }
+        this.showLoading(false);
     }
 
-    // Local Storage
-    loadTasks() {
-        const saved = localStorage.getItem('taskDashboard');
-        return saved ? JSON.parse(saved) : [];
+    // GitHub API
+    async apiRequest(endpoint, options = {}) {
+        const url = endpoint.startsWith('http') 
+            ? endpoint 
+            : `https://api.github.com/repos/${this.repo}${endpoint}`;
+        
+        const response = await fetch(url, {
+            ...options,
+            headers: {
+                'Authorization': `token ${this.token}`,
+                'Accept': 'application/vnd.github.v3+json',
+                'Content-Type': 'application/json',
+                ...options.headers
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`GitHub API error: ${response.status}`);
+        }
+
+        if (response.status === 204) return null;
+        return response.json();
     }
 
-    saveTasks() {
-        localStorage.setItem('taskDashboard', JSON.stringify(this.tasks));
+    async fetchIssues() {
+        // Fetch open and closed issues with our labels
+        const [open, closed] = await Promise.all([
+            this.apiRequest('/issues?state=open&per_page=100'),
+            this.apiRequest('/issues?state=closed&labels=done&per_page=100')
+        ]);
+        
+        this.issues = [...open, ...closed]
+            .filter(issue => !issue.pull_request) // Exclude PRs
+            .map(issue => this.issueToTask(issue));
+    }
+
+    issueToTask(issue) {
+        const labels = issue.labels.map(l => l.name);
+        
+        // Determine status from labels
+        let status = 'todo';
+        if (labels.includes('done') || issue.state === 'closed') {
+            status = 'done';
+        } else if (labels.includes('in-progress')) {
+            status = 'in-progress';
+        } else if (labels.includes('todo')) {
+            status = 'todo';
+        }
+
+        // Determine assignee from labels
+        let assignee = '';
+        if (labels.includes('assigned:sam')) assignee = 'sam';
+        else if (labels.includes('assigned:milo')) assignee = 'milo';
+
+        // Determine priority from labels
+        let priority = 'medium';
+        if (labels.includes('priority:high')) priority = 'high';
+        else if (labels.includes('priority:low')) priority = 'low';
+        else if (labels.includes('priority:medium')) priority = 'medium';
+
+        // Extract due date from body if present
+        const dueDateMatch = issue.body?.match(/📅 Due: (\d{4}-\d{2}-\d{2})/);
+        const dueDate = dueDateMatch ? dueDateMatch[1] : '';
+
+        // Get description (body without metadata)
+        let description = issue.body || '';
+        description = description.replace(/\n?📅 Due: \d{4}-\d{2}-\d{2}/, '').trim();
+
+        return {
+            id: issue.number.toString(),
+            issueNumber: issue.number,
+            title: issue.title,
+            description,
+            assignee,
+            dueDate,
+            priority,
+            status,
+            createdAt: issue.created_at,
+            url: issue.html_url
+        };
+    }
+
+    taskToIssueBody(task) {
+        let body = task.description || '';
+        if (task.dueDate) {
+            body += `\n\n📅 Due: ${task.dueDate}`;
+        }
+        return body;
+    }
+
+    getLabelsForTask(task) {
+        const labels = [];
+        
+        // Status label
+        if (task.status) labels.push(task.status);
+        
+        // Assignee label
+        if (task.assignee) labels.push(`assigned:${task.assignee}`);
+        
+        // Priority label
+        if (task.priority) labels.push(`priority:${task.priority}`);
+        
+        return labels;
     }
 
     // Task CRUD
-    createTask(taskData) {
-        const task = {
-            id: Date.now().toString(),
-            title: taskData.title,
-            description: taskData.description || '',
-            assignee: taskData.assignee || '',
-            dueDate: taskData.dueDate || '',
-            priority: taskData.priority || 'medium',
-            status: taskData.status || 'todo',
-            createdAt: new Date().toISOString()
-        };
-        
-        this.tasks.push(task);
-        this.saveTasks();
+    async createTask(taskData) {
+        const labels = this.getLabelsForTask(taskData);
+        const body = this.taskToIssueBody(taskData);
+
+        const issue = await this.apiRequest('/issues', {
+            method: 'POST',
+            body: JSON.stringify({
+                title: taskData.title,
+                body,
+                labels
+            })
+        });
+
+        const task = this.issueToTask(issue);
+        this.issues.push(task);
         this.renderTask(task);
         this.updateColumnCount(task.status);
         return task;
     }
 
-    updateTask(id, updates) {
-        const index = this.tasks.findIndex(t => t.id === id);
+    async updateTask(id, updates) {
+        const index = this.issues.findIndex(t => t.id === id);
         if (index === -1) return null;
+
+        const oldTask = this.issues[index];
+        const newTask = { ...oldTask, ...updates };
         
-        const oldStatus = this.tasks[index].status;
-        this.tasks[index] = { ...this.tasks[index], ...updates };
-        this.saveTasks();
-        
+        const labels = this.getLabelsForTask(newTask);
+        const body = this.taskToIssueBody(newTask);
+
+        // If moving to done, close the issue
+        const state = newTask.status === 'done' ? 'closed' : 'open';
+
+        await this.apiRequest(`/issues/${oldTask.issueNumber}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                title: newTask.title,
+                body,
+                labels,
+                state
+            })
+        });
+
+        this.issues[index] = newTask;
+
         // Re-render if status changed
-        if (updates.status && updates.status !== oldStatus) {
+        if (updates.status && updates.status !== oldTask.status) {
             this.removeTaskElement(id);
-            this.renderTask(this.tasks[index]);
-            this.updateColumnCount(oldStatus);
+            this.renderTask(newTask);
+            this.updateColumnCount(oldTask.status);
             this.updateColumnCount(updates.status);
         } else {
-            this.updateTaskElement(this.tasks[index]);
+            this.updateTaskElement(newTask);
         }
-        
-        return this.tasks[index];
+
+        return newTask;
     }
 
-    deleteTask(id) {
-        const task = this.tasks.find(t => t.id === id);
+    async deleteTask(id) {
+        const task = this.issues.find(t => t.id === id);
         if (!task) return;
-        
+
+        // Close the issue with a "deleted" label (GitHub doesn't allow deleting issues via API)
+        await this.apiRequest(`/issues/${task.issueNumber}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+                state: 'closed',
+                labels: ['deleted']
+            })
+        });
+
         const status = task.status;
-        this.tasks = this.tasks.filter(t => t.id !== id);
-        this.saveTasks();
+        this.issues = this.issues.filter(t => t.id !== id);
         this.removeTaskElement(id);
         this.updateColumnCount(status);
     }
 
     getTask(id) {
-        return this.tasks.find(t => t.id === id);
+        return this.issues.find(t => t.id === id);
     }
 
     // Rendering
@@ -88,7 +230,7 @@ class TaskDashboard {
             container.innerHTML = '';
         });
         
-        this.tasks.forEach(task => this.renderTask(task));
+        this.issues.forEach(task => this.renderTask(task));
     }
 
     renderTask(task) {
@@ -115,6 +257,7 @@ class TaskDashboard {
             <div class="task-meta">
                 ${assigneeHTML}
                 ${dueDateHTML}
+                <a href="${task.url}" target="_blank" class="issue-link" title="View on GitHub">#${task.issueNumber}</a>
             </div>
         `;
     }
@@ -155,7 +298,7 @@ class TaskDashboard {
     }
 
     updateColumnCount(status) {
-        const count = this.tasks.filter(t => t.status === status).length;
+        const count = this.issues.filter(t => t.status === status).length;
         const column = document.querySelector(`.column[data-status="${status}"]`);
         if (column) {
             column.querySelector('.task-count').textContent = count;
@@ -166,7 +309,24 @@ class TaskDashboard {
         ['todo', 'in-progress', 'done'].forEach(status => this.updateColumnCount(status));
     }
 
-    // Modal Management
+    // Token Modal
+    showTokenModal(message = '') {
+        const modal = document.getElementById('tokenModal');
+        const errorEl = document.getElementById('tokenError');
+        if (message) {
+            errorEl.textContent = message;
+            errorEl.style.display = 'block';
+        } else {
+            errorEl.style.display = 'none';
+        }
+        modal.classList.add('active');
+    }
+
+    hideTokenModal() {
+        document.getElementById('tokenModal').classList.remove('active');
+    }
+
+    // Task Modal
     openModal(taskId = null, status = 'todo') {
         const modal = document.getElementById('taskModal');
         const form = document.getElementById('taskForm');
@@ -206,6 +366,16 @@ class TaskDashboard {
         this.currentTaskId = null;
     }
 
+    // Loading & Error States
+    showLoading(show) {
+        const loader = document.getElementById('loader');
+        if (loader) loader.style.display = show ? 'flex' : 'none';
+    }
+
+    showError(message) {
+        alert(message); // Simple for now, could be improved
+    }
+
     // Event Listeners
     setupEventListeners() {
         // Add task buttons
@@ -218,7 +388,8 @@ class TaskDashboard {
         // Task card clicks (for editing)
         document.addEventListener('click', (e) => {
             const card = e.target.closest('.task-card');
-            if (card && !this.draggedTask) {
+            const isLink = e.target.closest('.issue-link');
+            if (card && !this.draggedTask && !isLink) {
                 this.openModal(card.dataset.taskId);
             }
         });
@@ -234,15 +405,17 @@ class TaskDashboard {
         });
 
         // Form submission
-        document.getElementById('taskForm').addEventListener('submit', (e) => {
+        document.getElementById('taskForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            this.handleFormSubmit();
+            await this.handleFormSubmit();
         });
 
         // Delete button
-        document.getElementById('deleteTask').addEventListener('click', () => {
-            if (this.currentTaskId && confirm('Delete this task?')) {
-                this.deleteTask(this.currentTaskId);
+        document.getElementById('deleteTask').addEventListener('click', async () => {
+            if (this.currentTaskId && confirm('Delete this task? (It will be closed on GitHub)')) {
+                this.showLoading(true);
+                await this.deleteTask(this.currentTaskId);
+                this.showLoading(false);
                 this.closeModal();
             }
         });
@@ -251,11 +424,43 @@ class TaskDashboard {
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.closeModal();
+                this.hideTokenModal();
+            }
+        });
+
+        // Token form
+        document.getElementById('tokenForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const tokenInput = document.getElementById('githubToken');
+            const token = tokenInput.value.trim();
+            
+            if (!token) return;
+            
+            localStorage.setItem('github_token', token);
+            this.token = token;
+            this.hideTokenModal();
+            await this.init();
+        });
+
+        // Refresh button
+        document.getElementById('refreshBtn')?.addEventListener('click', async () => {
+            this.showLoading(true);
+            await this.fetchIssues();
+            this.renderAllTasks();
+            this.updateAllCounts();
+            this.showLoading(false);
+        });
+
+        // Logout button
+        document.getElementById('logoutBtn')?.addEventListener('click', () => {
+            if (confirm('Clear saved token?')) {
+                localStorage.removeItem('github_token');
+                location.reload();
             }
         });
     }
 
-    handleFormSubmit() {
+    async handleFormSubmit() {
         const taskData = {
             title: document.getElementById('taskTitle').value.trim(),
             description: document.getElementById('taskDescription').value.trim(),
@@ -267,12 +472,17 @@ class TaskDashboard {
 
         if (!taskData.title) return;
 
-        if (this.currentTaskId) {
-            this.updateTask(this.currentTaskId, taskData);
-        } else {
-            this.createTask(taskData);
+        this.showLoading(true);
+        try {
+            if (this.currentTaskId) {
+                await this.updateTask(this.currentTaskId, taskData);
+            } else {
+                await this.createTask(taskData);
+            }
+        } catch (error) {
+            this.showError('Failed to save task: ' + error.message);
         }
-
+        this.showLoading(false);
         this.closeModal();
     }
 
@@ -312,7 +522,7 @@ class TaskDashboard {
                 }
             });
 
-            zone.addEventListener('drop', (e) => {
+            zone.addEventListener('drop', async (e) => {
                 e.preventDefault();
                 zone.classList.remove('drag-over');
                 
@@ -320,7 +530,12 @@ class TaskDashboard {
                 const newStatus = zone.dataset.status;
                 
                 if (taskId && newStatus) {
-                    this.updateTask(taskId, { status: newStatus });
+                    const task = this.getTask(taskId);
+                    if (task && task.status !== newStatus) {
+                        this.showLoading(true);
+                        await this.updateTask(taskId, { status: newStatus });
+                        this.showLoading(false);
+                    }
                 }
             });
         });
