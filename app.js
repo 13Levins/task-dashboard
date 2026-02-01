@@ -13,17 +13,22 @@ class TaskDashboard {
     }
 
     async init() {
+        // Always set up token form listener first (needed before auth)
+        this.setupTokenForm();
+        
         if (!this.token) {
             this.showTokenModal();
             return;
         }
         
+        // Set up UI event listeners immediately (only once, before API calls)
+        this.setupEventListeners();
+        this.setupDragAndDrop();
+        
         this.showLoading(true);
         try {
             await this.fetchIssues();
             this.renderAllTasks();
-            this.setupEventListeners();
-            this.setupDragAndDrop();
             this.updateAllCounts();
         } catch (error) {
             console.error('Init error:', error);
@@ -310,6 +315,44 @@ class TaskDashboard {
     }
 
     // Token Modal
+    setupTokenForm() {
+        // Only set up once
+        if (this._tokenFormInitialized) return;
+        this._tokenFormInitialized = true;
+
+        document.getElementById('tokenForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const tokenInput = document.getElementById('githubToken');
+            const token = tokenInput.value.trim();
+            
+            if (!token) return;
+            
+            localStorage.setItem('github_token', token);
+            this.token = token;
+            this.hideTokenModal();
+            await this.init();
+        });
+
+        // Allow Escape to close token modal
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                this.hideTokenModal();
+            }
+        });
+
+        // Close button for token modal
+        document.getElementById('closeTokenModal')?.addEventListener('click', () => {
+            this.hideTokenModal();
+        });
+
+        // Click outside to close token modal
+        document.getElementById('tokenModal').addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                this.hideTokenModal();
+            }
+        });
+    }
+
     showTokenModal(message = '') {
         const modal = document.getElementById('tokenModal');
         const errorEl = document.getElementById('tokenError');
@@ -378,6 +421,10 @@ class TaskDashboard {
 
     // Event Listeners
     setupEventListeners() {
+        // Only set up once
+        if (this._eventListenersInitialized) return;
+        this._eventListenersInitialized = true;
+
         // Add task buttons
         document.querySelectorAll('.add-task-btn').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -428,20 +475,6 @@ class TaskDashboard {
             }
         });
 
-        // Token form
-        document.getElementById('tokenForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const tokenInput = document.getElementById('githubToken');
-            const token = tokenInput.value.trim();
-            
-            if (!token) return;
-            
-            localStorage.setItem('github_token', token);
-            this.token = token;
-            this.hideTokenModal();
-            await this.init();
-        });
-
         // Refresh button
         document.getElementById('refreshBtn')?.addEventListener('click', async () => {
             this.showLoading(true);
@@ -488,6 +521,10 @@ class TaskDashboard {
 
     // Drag and Drop
     setupDragAndDrop() {
+        // Only set up once
+        if (this._dragDropInitialized) return;
+        this._dragDropInitialized = true;
+
         document.addEventListener('dragstart', (e) => {
             const card = e.target.closest('.task-card');
             if (card) {
