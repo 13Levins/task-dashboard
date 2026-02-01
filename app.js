@@ -429,13 +429,10 @@ class TaskDashboard {
 
         console.log('Setting up event listeners...');
 
-        // Sidebar buttons
-        const sidebarButtons = document.querySelectorAll('.sidebar-btn');
-        console.log('Found sidebar buttons:', sidebarButtons.length);
-        
-        sidebarButtons.forEach(btn => {
-            console.log('Adding click listener to button:', btn.dataset.action);
-            btn.addEventListener('click', (e) => {
+        // Sidebar buttons - use event delegation on document to catch clicks even if buttons load later
+        document.addEventListener('click', (e) => {
+            const btn = e.target.closest('.sidebar-btn');
+            if (btn) {
                 console.log('Sidebar button clicked!', btn.dataset.action);
                 const action = btn.dataset.action;
                 if (action === 'create-task') {
@@ -446,7 +443,7 @@ class TaskDashboard {
                 // Update active state
                 document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-            });
+            }
         });
 
         // Task card clicks (for editing)
