@@ -33,9 +33,12 @@ header {
     padding: 1.5rem 2rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
 }
 
-header h1 {
+.header-left h1 {
     font-size: 1.75rem;
     font-weight: 600;
 }
@@ -44,6 +47,55 @@ header h1 {
     color: var(--text-secondary);
     font-size: 0.9rem;
     margin-top: 0.25rem;
+}
+
+.header-right {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.icon-btn {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+}
+
+.icon-btn:hover {
+    background: var(--border-color);
+}
+
+/* Loading Overlay */
+.loader {
+    position: fixed;
+    inset: 0;
+    background: rgba(13, 17, 23, 0.9);
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    gap: 1rem;
+}
+
+.spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid var(--border-color);
+    border-top-color: var(--accent-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loader p {
+    color: var(--text-secondary);
 }
 
 /* Board Layout */
@@ -186,6 +238,17 @@ header h1 {
     color: var(--accent-orange);
 }
 
+.issue-link {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-decoration: none;
+    margin-left: auto;
+}
+
+.issue-link:hover {
+    color: var(--accent-blue);
+}
+
 .priority-indicator {
     width: 4px;
     height: 100%;
@@ -292,6 +355,52 @@ header h1 {
     color: var(--text-primary);
 }
 
+/* Token Modal Specific */
+.modal-intro {
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+.setup-steps {
+    margin: 1rem 0;
+    padding-left: 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.setup-steps li {
+    margin-bottom: 0.5rem;
+}
+
+.setup-steps a {
+    color: var(--accent-blue);
+}
+
+.setup-steps code {
+    background: var(--bg-tertiary);
+    padding: 0.15rem 0.4rem;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.token-error {
+    color: var(--accent-red);
+    background: rgba(248, 81, 73, 0.1);
+    padding: 0.75rem;
+    border-radius: 6px;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    display: none;
+}
+
+.token-note {
+    margin-top: 1rem;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
 /* Form Styles */
 form {
     padding: 1.25rem;
@@ -316,6 +425,7 @@ label {
 }
 
 input[type="text"],
+input[type="password"],
 input[type="date"],
 textarea,
 select {

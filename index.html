@@ -8,9 +8,21 @@
 </head>
 <body>
     <header>
-        <h1>🦊 Task Dashboard</h1>
-        <p class="subtitle">Sam & Milo's shared workspace</p>
+        <div class="header-left">
+            <h1>🦊 Task Dashboard</h1>
+            <p class="subtitle">Sam & Milo's shared workspace</p>
+        </div>
+        <div class="header-right">
+            <button class="icon-btn" id="refreshBtn" title="Refresh">🔄</button>
+            <button class="icon-btn" id="logoutBtn" title="Clear token">🚪</button>
+        </div>
     </header>
+
+    <!-- Loading Overlay -->
+    <div class="loader" id="loader">
+        <div class="spinner"></div>
+        <p>Syncing with GitHub...</p>
+    </div>
     
     <main class="board">
         <div class="column" data-status="todo">
@@ -40,6 +52,42 @@
             <button class="add-task-btn" data-status="done">+ Add Task</button>
         </div>
     </main>
+
+    <!-- Token Setup Modal -->
+    <div class="modal-overlay" id="tokenModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🔐 Connect to GitHub</h3>
+            </div>
+            <form id="tokenForm">
+                <p class="modal-intro">
+                    This dashboard syncs with GitHub Issues. You'll need a personal access token to get started.
+                </p>
+                
+                <ol class="setup-steps">
+                    <li>Go to <a href="https://github.com/settings/tokens/new" target="_blank">GitHub Token Settings</a></li>
+                    <li>Name it <code>task-dashboard</code></li>
+                    <li>Select the <code>repo</code> scope</li>
+                    <li>Generate and paste below</li>
+                </ol>
+
+                <p class="token-error" id="tokenError"></p>
+                
+                <div class="form-group">
+                    <label for="githubToken">Personal Access Token</label>
+                    <input type="password" id="githubToken" required placeholder="ghp_xxxxxxxxxxxx">
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Connect</button>
+                </div>
+                
+                <p class="token-note">
+                    🔒 Your token is stored locally in your browser and never sent anywhere except GitHub's API.
+                </p>
+            </form>
+        </div>
+    </div>
 
     <!-- Task Modal -->
     <div class="modal-overlay" id="taskModal">

@@ -1,6 +1,6 @@
 # 🦊 Task Dashboard
 
-A minimal kanban-style task board for Sam & Milo's shared workspace.
+A minimal kanban-style task board for Sam & Milo's shared workspace, backed by GitHub Issues.
 
 ## Features
 
@@ -10,41 +10,39 @@ A minimal kanban-style task board for Sam & Milo's shared workspace.
 - **Assignees**: Sam or Milo 🦊
 - **Priority levels**: Low (green), Medium (orange), High (red)
 - **Due date warnings**: Overdue (red) and upcoming (orange) indicators
-- **Auto-save**: Tasks persist in browser localStorage
+- **GitHub Issues backend**: Tasks sync with repository issues
 - **Dark theme**: Easy on the eyes
 
-## Usage
+## Setup
 
-Just open `index.html` in your browser. No server, no build step, no dependencies.
+1. Open `index.html` in your browser
+2. Create a [GitHub Personal Access Token](https://github.com/settings/tokens/new) with `repo` scope
+3. Paste the token when prompted
+4. Done! Your tasks sync with GitHub Issues
 
-```bash
-open index.html
-# or
-python -m http.server 8000  # then visit localhost:8000
-```
+## How It Works
 
-## Data Storage
-
-Tasks are saved to your browser's localStorage. To export/backup your tasks:
-
-1. Open browser DevTools (F12)
-2. Go to Console
-3. Run: `localStorage.getItem('taskDashboard')`
-4. Copy the JSON output
-
-To restore:
-```js
-localStorage.setItem('taskDashboard', '<your-json-here>');
-location.reload();
-```
+- Each task is a GitHub Issue in this repo
+- Labels control status, assignee, and priority:
+  - Status: `todo`, `in-progress`, `done`
+  - Assignee: `assigned:sam`, `assigned:milo`
+  - Priority: `priority:low`, `priority:medium`, `priority:high`
+- Due dates are stored in the issue body
+- Moving a task to "Done" closes the issue
+- Deleting a task closes the issue with a "deleted" label
 
 ## Tech Stack
 
 - Vanilla HTML/CSS/JavaScript
 - Zero dependencies
+- GitHub REST API
 - Native drag-and-drop API
-- CSS Grid layout
-- LocalStorage persistence
+
+## Security
+
+Your GitHub token is stored in your browser's localStorage and only sent to GitHub's API. It never touches any other server.
+
+To clear your token, click the 🚪 button in the header.
 
 ---
 
