@@ -612,12 +612,6 @@ class TaskDashboard {
         div.textContent = str;
         return div.innerHTML;
     }
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-    window.dashboard = new TaskDashboard();
-});
 
     // Comments & Activity
     async loadCommentsAndActivity(issueNumber) {
@@ -757,3 +751,9 @@ document.addEventListener('DOMContentLoaded', () => {
             this.showError('Failed to add comment: ' + error.message);
         }
     }
+}
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    window.dashboard = new TaskDashboard();
+});
