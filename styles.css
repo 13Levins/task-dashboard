@@ -746,3 +746,191 @@ textarea {
     font-weight: 500;
     font-size: 0.8rem;
 }
+
+/* Task Workshop */
+.workshop {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+}
+
+.workshop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.workshop-header h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+}
+
+.workshop-content {
+    max-width: 900px;
+}
+
+.tips-section {
+    margin-bottom: 2rem;
+}
+
+.tips-section h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    color: var(--text-secondary);
+}
+
+.tips-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* TIP Thread Item */
+.tip-thread {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: all 0.2s ease;
+}
+
+.tip-thread:hover {
+    border-color: var(--accent-blue);
+}
+
+.tip-header {
+    padding: 1rem;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.tip-header-left {
+    flex: 1;
+    min-width: 0;
+}
+
+.tip-title {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    color: var(--text-primary);
+}
+
+.tip-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.tip-complexity {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: var(--bg-tertiary);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    font-weight: 500;
+}
+
+.tip-header-right {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.tip-expand-icon {
+    font-size: 1.2rem;
+    transition: transform 0.2s ease;
+}
+
+.tip-thread.expanded .tip-expand-icon {
+    transform: rotate(180deg);
+}
+
+.tip-body {
+    display: none;
+    border-top: 1px solid var(--border-color);
+}
+
+.tip-thread.expanded .tip-body {
+    display: block;
+}
+
+.tip-description {
+    padding: 1rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--bg-primary);
+}
+
+.tip-description p {
+    margin: 0;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    color: var(--text-secondary);
+}
+
+.tip-references {
+    padding: 0.75rem 1rem;
+    background: var(--bg-tertiary);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.tip-references h5 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-secondary);
+}
+
+.tip-references a {
+    display: block;
+    color: var(--accent-blue);
+    text-decoration: none;
+    font-size: 0.85rem;
+    margin-bottom: 0.25rem;
+}
+
+.tip-references a:hover {
+    text-decoration: underline;
+}
+
+.tip-discussion {
+    padding: 1rem;
+}
+
+.tip-discussion h5 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.tip-actions {
+    padding: 1rem;
+    border-top: 1px solid var(--border-color);
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+    background: var(--bg-tertiary);
+}
+
+/* Empty state */
+.tips-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--text-secondary);
+}
+
+.tips-empty p {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+}

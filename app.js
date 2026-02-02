@@ -6,8 +6,11 @@ class TaskDashboard {
         this.repo = '13Levins/task-dashboard';
         this.token = localStorage.getItem('github_token');
         this.issues = [];
+        this.tips = [];
         this.currentTaskId = null;
+        this.currentTipId = null;
         this.draggedTask = null;
+        this.currentView = 'dashboard';
         
         this.init();
     }
@@ -30,6 +33,9 @@ class TaskDashboard {
             await this.fetchIssues();
             this.renderAllTasks();
             this.updateAllCounts();
+            
+            // Set initial view to dashboard
+            this.switchView('dashboard');
         } catch (error) {
             console.error('Init error:', error);
             if (error.message.includes('401') || error.message.includes('403')) {
@@ -438,13 +444,19 @@ class TaskDashboard {
             const btn = e.target.closest('.sidebar-btn');
             if (btn) {
                 const action = btn.dataset.action;
+                const view = btn.dataset.view;
+                
                 if (action === 'create-task') {
                     this.openModal(null, 'todo');
+                } else if (view) {
+                    this.switchView(view);
                 }
                 
-                // Update active state
-                document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
-                btn.classList.add('active');
+                // Update active state (only for view buttons)
+                if (view) {
+                    document.querySelectorAll('.sidebar-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                }
             }
         });
 
@@ -517,6 +529,38 @@ class TaskDashboard {
         document.getElementById('newComment')?.addEventListener('keydown', async (e) => {
             if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                 await this.addComment();
+            }
+        });
+
+        // Task Workshop buttons
+        document.getElementById('createTipBtn')?.addEventListener('click', () => {
+            this.openTipModal();
+        });
+
+        document.getElementById('closeTipModal')?.addEventListener('click', () => {
+            this.closeTipModal();
+        });
+
+        document.getElementById('cancelTip')?.addEventListener('click', () => {
+            this.closeTipModal();
+        });
+
+        document.getElementById('tipForm')?.addEventListener('submit', async (e) => {
+            await this.handleTipFormSubmit(e);
+        });
+
+        document.getElementById('deleteTip')?.addEventListener('click', async () => {
+            await this.deleteTip();
+        });
+
+        document.getElementById('toggleArchived')?.addEventListener('click', () => {
+            this.toggleArchivedTips();
+        });
+
+        // Close TIP modal on Escape or click outside
+        document.getElementById('tipModal')?.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-overlay')) {
+                this.closeTipModal();
             }
         });
     }
@@ -749,6 +793,435 @@ class TaskDashboard {
             await this.loadCommentsAndActivity(task.issueNumber);
         } catch (error) {
             this.showError('Failed to add comment: ' + error.message);
+        }
+    }
+
+    // Task Workshop / TIPs
+    async fetchTips() {
+        const [active, archived] = await Promise.all([
+            this.apiRequest('/issues?labels=tip&state=open&per_page=100'),
+            this.apiRequest('/issues?labels=tip-archived&state=all&per_page=100')
+        ]);
+        
+        this.tips = {
+            active: active.map(tip => this.issueToTip(tip)),
+            archived: archived.map(tip => this.issueToTip(tip))
+        };
+    }
+
+    issueToTip(issue) {
+        const body = issue.body || '';
+        
+        // Extract complexity from body
+        const complexityMatch = body.match(/📊 Complexity: (\d+) points?/);
+        const complexity = complexityMatch ? complexityMatch[1] : '';
+        
+        // Extract references (lines starting with http)
+        const references = body.split('\n')
+            .filter(line => line.trim().match(/^https?:\/\//))
+            .map(line => line.trim());
+        
+        // Remove metadata from description
+        let description = body
+            .replace(/📊 Complexity: \d+ points?\n?/, '')
+            .replace(/^https?:\/\/.+$/gm, '')
+            .trim();
+        
+        return {
+            id: issue.number.toString(),
+            issueNumber: issue.number,
+            title: issue.title,
+            description,
+            complexity,
+            references,
+            comments: issue.comments,
+            updatedAt: issue.updated_at,
+            createdAt: issue.created_at,
+            url: issue.html_url
+        };
+    }
+
+    renderTips() {
+        this.renderTipsList('active');
+        this.renderTipsList('archived');
+    }
+
+    renderTipsList(type) {
+        const container = document.getElementById(`${type}TipsList`);
+        const tips = this.tips[type] || [];
+        
+        if (tips.length === 0) {
+            container.innerHTML = `
+                <div class="tips-empty">
+                    <p>No ${type} TIPs yet</p>
+                    ${type === 'active' ? '<p style="font-size: 0.9rem;">Click "+ New TIP" to create one!</p>' : ''}
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort: most recent activity first, then newest first
+        const sorted = tips.sort((a, b) => {
+            const dateA = new Date(a.updatedAt);
+            const dateB = new Date(b.updatedAt);
+            if (dateA > dateB) return -1;
+            if (dateA < dateB) return 1;
+            // If same updated time, sort by created (newest first)
+            return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+        
+        container.innerHTML = sorted.map(tip => this.getTipHTML(tip, type)).join('');
+    }
+
+    getTipHTML(tip, type) {
+        const complexityHTML = tip.complexity 
+            ? `<span class="tip-complexity">📊 ${tip.complexity} points</span>` 
+            : '';
+        
+        const commentsHTML = tip.comments > 0 
+            ? `<span>💬 ${tip.comments}</span>` 
+            : '';
+        
+        const updated = new Date(tip.updatedAt).toLocaleDateString();
+        
+        const referencesHTML = tip.references.length > 0 
+            ? `<div class="tip-references">
+                <h5>📎 References</h5>
+                ${tip.references.map(ref => `<a href="${ref}" target="_blank">${ref}</a>`).join('')}
+               </div>`
+            : '';
+        
+        const actionsHTML = type === 'active'
+            ? `<div class="tip-actions">
+                <button class="btn btn-small btn-secondary" onclick="dashboard.editTip('${tip.id}')">Edit</button>
+                <button class="btn btn-small btn-primary" onclick="dashboard.convertTipToTask('${tip.id}')">Create Task</button>
+               </div>`
+            : '';
+        
+        return `
+            <div class="tip-thread" data-tip-id="${tip.id}">
+                <div class="tip-header" onclick="dashboard.toggleTip('${tip.id}')">
+                    <div class="tip-header-left">
+                        <div class="tip-title">${this.escapeHTML(tip.title)}</div>
+                        <div class="tip-meta">
+                            ${complexityHTML}
+                            ${commentsHTML}
+                            <span>Updated: ${updated}</span>
+                        </div>
+                    </div>
+                    <div class="tip-header-right">
+                        <span class="tip-expand-icon">▼</span>
+                    </div>
+                </div>
+                <div class="tip-body">
+                    <div class="tip-description">
+                        <p>${this.escapeHTML(tip.description) || '<em>No description</em>'}</p>
+                    </div>
+                    ${referencesHTML}
+                    <div class="tip-discussion">
+                        <h5>💬 Discussion</h5>
+                        <div id="tip-comments-${tip.id}" class="comments-list"></div>
+                        <div class="comment-form" style="margin-top: 0.75rem;">
+                            <textarea id="tip-comment-${tip.id}" placeholder="Add a comment..." rows="2"></textarea>
+                            <button class="btn btn-small btn-primary" onclick="dashboard.addTipComment('${tip.id}')">Comment</button>
+                        </div>
+                    </div>
+                    ${actionsHTML}
+                </div>
+            </div>
+        `;
+    }
+
+    toggleTip(tipId) {
+        const tipEl = document.querySelector(`.tip-thread[data-tip-id="${tipId}"]`);
+        if (!tipEl) return;
+        
+        const wasExpanded = tipEl.classList.contains('expanded');
+        
+        if (!wasExpanded) {
+            tipEl.classList.add('expanded');
+            // Load comments when expanding
+            this.loadTipComments(tipId);
+        } else {
+            tipEl.classList.remove('expanded');
+        }
+    }
+
+    async loadTipComments(tipId) {
+        const tip = [...this.tips.active, ...this.tips.archived].find(t => t.id === tipId);
+        if (!tip) return;
+        
+        try {
+            const comments = await this.apiRequest(`/issues/${tip.issueNumber}/comments`);
+            this.renderTipComments(tipId, comments);
+        } catch (error) {
+            console.error('Failed to load TIP comments:', error);
+        }
+    }
+
+    renderTipComments(tipId, comments) {
+        const container = document.getElementById(`tip-comments-${tipId}`);
+        if (!container) return;
+        
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.85rem;">No comments yet.</p>';
+            return;
+        }
+        
+        container.innerHTML = comments.map(comment => {
+            const author = comment.user.login;
+            const time = new Date(comment.created_at).toLocaleString();
+            const body = this.escapeHTML(comment.body);
+            
+            return `
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span class="comment-author">${author}</span>
+                        <span class="comment-time">${time}</span>
+                    </div>
+                    <div class="comment-body">${body}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async addTipComment(tipId) {
+        const tip = [...this.tips.active, ...this.tips.archived].find(t => t.id === tipId);
+        const textarea = document.getElementById(`tip-comment-${tipId}`);
+        const commentText = textarea?.value.trim();
+        
+        if (!commentText || !tip) return;
+        
+        try {
+            await this.apiRequest(`/issues/${tip.issueNumber}/comments`, {
+                method: 'POST',
+                body: JSON.stringify({ body: commentText })
+            });
+            
+            textarea.value = '';
+            await this.loadTipComments(tipId);
+            
+            // Refresh TIPs to update comment count and sort order
+            await this.fetchTips();
+            this.renderTips();
+            // Re-expand the TIP
+            const tipEl = document.querySelector(`.tip-thread[data-tip-id="${tipId}"]`);
+            if (tipEl) tipEl.classList.add('expanded');
+        } catch (error) {
+            this.showError('Failed to add comment: ' + error.message);
+        }
+    }
+
+    openTipModal(tipId = null) {
+        const modal = document.getElementById('tipModal');
+        const form = document.getElementById('tipForm');
+        const title = document.getElementById('tipModalTitle');
+        const deleteBtn = document.getElementById('deleteTip');
+        
+        form.reset();
+        
+        if (tipId) {
+            const tip = [...this.tips.active, ...this.tips.archived].find(t => t.id === tipId);
+            if (!tip) return;
+            
+            this.currentTipId = tipId;
+            title.textContent = 'Edit TIP';
+            deleteBtn.style.display = 'block';
+            
+            document.getElementById('tipId').value = tip.id;
+            document.getElementById('tipTitle').value = tip.title;
+            document.getElementById('tipDescription').value = tip.description;
+            document.getElementById('tipComplexity').value = tip.complexity;
+            document.getElementById('tipReferences').value = tip.references.join('\n');
+        } else {
+            this.currentTipId = null;
+            title.textContent = 'New TIP';
+            deleteBtn.style.display = 'none';
+        }
+        
+        modal.classList.add('active');
+        document.getElementById('tipTitle').focus();
+    }
+
+    closeTipModal() {
+        document.getElementById('tipModal').classList.remove('active');
+        this.currentTipId = null;
+    }
+
+    async handleTipFormSubmit(e) {
+        e.preventDefault();
+        
+        const tipData = {
+            title: document.getElementById('tipTitle').value.trim(),
+            description: document.getElementById('tipDescription').value.trim(),
+            complexity: document.getElementById('tipComplexity').value,
+            references: document.getElementById('tipReferences').value
+                .split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0)
+        };
+        
+        if (!tipData.title) return;
+        
+        // Build body text
+        let body = tipData.description;
+        
+        if (tipData.complexity) {
+            body = `📊 Complexity: ${tipData.complexity} points\n\n${body}`;
+        }
+        
+        if (tipData.references.length > 0) {
+            body += '\n\n' + tipData.references.join('\n');
+        }
+        
+        this.showLoading(true);
+        try {
+            if (this.currentTipId) {
+                // Update existing TIP
+                const tip = [...this.tips.active, ...this.tips.archived].find(t => t.id === this.currentTipId);
+                if (tip) {
+                    await this.apiRequest(`/issues/${tip.issueNumber}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                            title: tipData.title,
+                            body: body
+                        })
+                    });
+                }
+            } else {
+                // Create new TIP
+                await this.apiRequest('/issues', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        title: tipData.title,
+                        body: body,
+                        labels: ['tip']
+                    })
+                });
+            }
+            
+            await this.fetchTips();
+            this.renderTips();
+            this.closeTipModal();
+        } catch (error) {
+            this.showError('Failed to save TIP: ' + error.message);
+        }
+        this.showLoading(false);
+    }
+
+    async deleteTip() {
+        if (!this.currentTipId || !confirm('Delete this TIP permanently?')) return;
+        
+        const tip = [...this.tips.active, ...this.tips.archived].find(t => t.id === this.currentTipId);
+        if (!tip) return;
+        
+        this.showLoading(true);
+        try {
+            await this.apiRequest(`/issues/${tip.issueNumber}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    state: 'closed',
+                    labels: ['deleted']
+                })
+            });
+            
+            await this.fetchTips();
+            this.renderTips();
+            this.closeTipModal();
+        } catch (error) {
+            this.showError('Failed to delete TIP: ' + error.message);
+        }
+        this.showLoading(false);
+    }
+
+    editTip(tipId) {
+        this.openTipModal(tipId);
+    }
+
+    async convertTipToTask(tipId) {
+        const tip = this.tips.active.find(t => t.id === tipId);
+        if (!tip) return;
+        
+        // Pre-populate task form with TIP data
+        this.currentView = 'dashboard';
+        this.switchView('dashboard');
+        
+        // Wait a tick for view to switch
+        setTimeout(() => {
+            this.openModal(null, 'todo');
+            
+            document.getElementById('taskTitle').value = tip.title;
+            
+            // Build description with link to TIP
+            let description = tip.description;
+            description += `\n\n---\n*Converted from TIP: ${tip.url}*`;
+            
+            document.getElementById('taskDescription').value = description;
+            
+            // Set complexity as priority hint
+            if (tip.complexity) {
+                const complexity = parseInt(tip.complexity);
+                if (complexity <= 3) {
+                    document.getElementById('taskPriority').value = 'low';
+                } else if (complexity <= 8) {
+                    document.getElementById('taskPriority').value = 'medium';
+                } else {
+                    document.getElementById('taskPriority').value = 'high';
+                }
+            }
+        }, 100);
+        
+        // Archive the TIP
+        try {
+            await this.apiRequest(`/issues/${tip.issueNumber}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    labels: ['tip-archived']
+                })
+            });
+            
+            await this.fetchTips();
+            this.renderTips();
+        } catch (error) {
+            console.error('Failed to archive TIP:', error);
+        }
+    }
+
+    switchView(view) {
+        this.currentView = view;
+        
+        const dashboardView = document.getElementById('dashboardView');
+        const workshopView = document.getElementById('workshopView');
+        
+        if (view === 'dashboard') {
+            dashboardView.style.display = 'grid';
+            workshopView.style.display = 'none';
+        } else if (view === 'workshop') {
+            dashboardView.style.display = 'none';
+            workshopView.style.display = 'block';
+            this.fetchTips().then(() => this.renderTips());
+        }
+        
+        // Update sidebar active state
+        document.querySelectorAll('.sidebar-btn[data-view]').forEach(btn => {
+            if (btn.dataset.view === view) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    toggleArchivedTips() {
+        const section = document.getElementById('archivedTips');
+        const btn = document.getElementById('toggleArchived');
+        
+        if (section.style.display === 'none') {
+            section.style.display = 'block';
+            btn.textContent = 'Hide Archived TIPs';
+        } else {
+            section.style.display = 'none';
+            btn.textContent = 'Show Archived TIPs';
         }
     }
 }
