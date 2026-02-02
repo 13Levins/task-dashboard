@@ -80,7 +80,13 @@ class TaskDashboard {
         ]);
         
         this.issues = [...open, ...closed]
-            .filter(issue => !issue.pull_request) // Exclude PRs
+            .filter(issue => {
+                if (issue.pull_request) return false; // Exclude PRs
+                const labels = issue.labels.map(l => l.name);
+                // Exclude TIPs (workshop items)
+                if (labels.includes('tip') || labels.includes('tip-archived')) return false;
+                return true;
+            })
             .map(issue => this.issueToTask(issue));
     }
 
