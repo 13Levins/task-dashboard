@@ -28,14 +28,23 @@
         <!-- Sidebar -->
         <aside class="sidebar">
             <nav class="sidebar-nav">
-                <button class="sidebar-btn active" data-action="create-task">
+                <button class="sidebar-btn" data-view="dashboard">
+                    <span class="sidebar-icon">📊</span>
+                    <span class="sidebar-label">Dashboard</span>
+                </button>
+                <button class="sidebar-btn" data-view="workshop">
+                    <span class="sidebar-icon">🔧</span>
+                    <span class="sidebar-label">Task Workshop</span>
+                </button>
+                <button class="sidebar-btn" data-action="create-task">
                     <span class="sidebar-icon">➕</span>
                     <span class="sidebar-label">Create Task</span>
                 </button>
             </nav>
         </aside>
         
-        <main class="board">
+        <!-- Main Dashboard View -->
+        <main class="board" id="dashboardView">
         <div class="column" data-status="todo">
             <div class="column-header">
                 <h2>📋 To Do</h2>
@@ -59,7 +68,31 @@
             </div>
             <div class="tasks" data-status="done"></div>
         </div>
-    </main>
+        </main>
+        
+        <!-- Task Workshop View -->
+        <main class="workshop" id="workshopView" style="display: none;">
+            <div class="workshop-header">
+                <h2>🔧 Task Workshop</h2>
+                <button class="btn btn-primary" id="createTipBtn">+ New TIP</button>
+            </div>
+            
+            <div class="workshop-content">
+                <div id="activeTips" class="tips-section">
+                    <h3>Active TIPs</h3>
+                    <div id="activeTipsList" class="tips-list"></div>
+                </div>
+                
+                <div id="archivedTips" class="tips-section" style="display: none;">
+                    <h3>Archived TIPs</h3>
+                    <div id="archivedTipsList" class="tips-list"></div>
+                </div>
+                
+                <button id="toggleArchived" class="btn btn-secondary" style="margin-top: 1rem;">
+                    Show Archived TIPs
+                </button>
+            </div>
+        </main>
     </div>
 
     <!-- Token Setup Modal -->
@@ -184,3 +217,53 @@
     <script src="app.js"></script>
 </body>
 </html>
+
+    <!-- TIP Modal -->
+    <div class="modal-overlay" id="tipModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3 id="tipModalTitle">New TIP</h3>
+                <button class="close-btn" id="closeTipModal">&times;</button>
+            </div>
+            <form id="tipForm">
+                <input type="hidden" id="tipId">
+                
+                <div class="form-group">
+                    <label for="tipTitle">Title *</label>
+                    <input type="text" id="tipTitle" required placeholder="What task are we workshopping?">
+                </div>
+                
+                <div class="form-group">
+                    <label for="tipDescription">Description</label>
+                    <textarea id="tipDescription" rows="5" placeholder="Describe the task idea..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tipComplexity">Complexity (Fibonacci Story Points)</label>
+                    <select id="tipComplexity">
+                        <option value="">Not estimated</option>
+                        <option value="1">1 - Trivial</option>
+                        <option value="2">2 - Simple</option>
+                        <option value="3">3 - Easy</option>
+                        <option value="5">5 - Medium</option>
+                        <option value="8">8 - Complex</option>
+                        <option value="13">13 - Large</option>
+                        <option value="21">21 - Very Large</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="tipReferences">Related Links/References (optional)</label>
+                    <textarea id="tipReferences" rows="2" placeholder="URLs, issue numbers, etc. (one per line)"></textarea>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-danger" id="deleteTip" style="display: none;">Delete TIP</button>
+                    <div class="spacer"></div>
+                    <button type="button" class="btn btn-secondary" id="cancelTip">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save TIP</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
