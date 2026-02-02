@@ -161,6 +161,23 @@
                     <button type="submit" class="btn btn-primary">Save Task</button>
                 </div>
             </form>
+            
+            <!-- Activity & Comments (only shown when editing existing task) -->
+            <div id="taskDetails" style="display: none;">
+                <div class="task-section">
+                    <h4>💬 Comments</h4>
+                    <div id="commentsList" class="comments-list"></div>
+                    <div class="comment-form">
+                        <textarea id="newComment" placeholder="Add a comment..." rows="2"></textarea>
+                        <button type="button" class="btn btn-small btn-primary" id="addComment">Comment</button>
+                    </div>
+                </div>
+                
+                <div class="task-section">
+                    <h4>📋 Activity</h4>
+                    <div id="activityList" class="activity-list"></div>
+                </div>
+            </div>
         </div>
     </div>
 

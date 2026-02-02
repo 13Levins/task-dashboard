@@ -370,11 +370,12 @@ class TaskDashboard {
     }
 
     // Task Modal
-    openModal(taskId = null, status = 'todo') {
+    async openModal(taskId = null, status = 'todo') {
         const modal = document.getElementById('taskModal');
         const form = document.getElementById('taskForm');
         const title = document.getElementById('modalTitle');
         const deleteBtn = document.getElementById('deleteTask');
+        const taskDetails = document.getElementById('taskDetails');
         
         form.reset();
         
@@ -385,6 +386,7 @@ class TaskDashboard {
             this.currentTaskId = taskId;
             title.textContent = 'Edit Task';
             deleteBtn.style.display = 'block';
+            taskDetails.style.display = 'block';
             
             document.getElementById('taskId').value = task.id;
             document.getElementById('taskTitle').value = task.title;
@@ -394,10 +396,14 @@ class TaskDashboard {
             document.getElementById('taskPriority').value = task.priority;
             document.getElementById('taskStatus').value = task.status;
             document.getElementById('taskStatusSelect').value = task.status;
+            
+            // Load comments and activity
+            await this.loadCommentsAndActivity(task.issueNumber);
         } else {
             this.currentTaskId = null;
             title.textContent = 'New Task';
             deleteBtn.style.display = 'none';
+            taskDetails.style.display = 'none';
             document.getElementById('taskStatus').value = status;
             document.getElementById('taskStatusSelect').value = status;
         }
@@ -501,6 +507,18 @@ class TaskDashboard {
                 location.reload();
             }
         });
+
+        // Add comment button
+        document.getElementById('addComment')?.addEventListener('click', async () => {
+            await this.addComment();
+        });
+
+        // Enter key in comment textarea (Cmd+Enter to submit)
+        document.getElementById('newComment')?.addEventListener('keydown', async (e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                await this.addComment();
+            }
+        });
     }
 
     async handleFormSubmit() {
@@ -600,3 +618,142 @@ class TaskDashboard {
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboard = new TaskDashboard();
 });
+
+    // Comments & Activity
+    async loadCommentsAndActivity(issueNumber) {
+        try {
+            const [comments, events] = await Promise.all([
+                this.apiRequest(`/issues/${issueNumber}/comments`),
+                this.apiRequest(`/issues/${issueNumber}/events`)
+            ]);
+            
+            this.renderComments(comments);
+            this.renderActivity(events);
+        } catch (error) {
+            console.error('Failed to load comments/activity:', error);
+        }
+    }
+
+    renderComments(comments) {
+        const container = document.getElementById('commentsList');
+        if (!comments || comments.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.85rem;">No comments yet.</p>';
+            return;
+        }
+        
+        container.innerHTML = comments.map(comment => {
+            const author = comment.user.login;
+            const time = new Date(comment.created_at).toLocaleString();
+            const body = this.escapeHTML(comment.body);
+            
+            return `
+                <div class="comment-item">
+                    <div class="comment-header">
+                        <span class="comment-author">${author}</span>
+                        <span class="comment-time">${time}</span>
+                    </div>
+                    <div class="comment-body">${body}</div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    renderActivity(events) {
+        const container = document.getElementById('activityList');
+        
+        // Filter for relevant events
+        const relevantEvents = events.filter(e => 
+            ['labeled', 'unlabeled', 'assigned', 'unassigned', 'closed', 'reopened'].includes(e.event)
+        );
+        
+        if (relevantEvents.length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary); font-size: 0.85rem;">No activity yet.</p>';
+            return;
+        }
+        
+        container.innerHTML = relevantEvents.map(event => {
+            const time = new Date(event.created_at).toLocaleString();
+            const actor = event.actor?.login || 'System';
+            let icon = '📝';
+            let text = '';
+            
+            switch (event.event) {
+                case 'labeled':
+                    icon = '🏷️';
+                    const labelName = event.label?.name || '';
+                    if (labelName.startsWith('assigned:')) {
+                        icon = '👤';
+                        text = `<strong>${actor}</strong> assigned to <span class="activity-badge">${labelName.replace('assigned:', '')}</span>`;
+                    } else if (labelName.includes('progress')) {
+                        icon = '🔨';
+                        text = `<strong>${actor}</strong> moved to <span class="activity-badge">In Progress</span>`;
+                    } else if (labelName === 'done') {
+                        icon = '✅';
+                        text = `<strong>${actor}</strong> moved to <span class="activity-badge">Done</span>`;
+                    } else if (labelName === 'todo') {
+                        icon = '📋';
+                        text = `<strong>${actor}</strong> moved to <span class="activity-badge">To Do</span>`;
+                    } else if (labelName.startsWith('priority:')) {
+                        icon = '⚡';
+                        text = `<strong>${actor}</strong> set priority to <span class="activity-badge">${labelName.replace('priority:', '')}</span>`;
+                    } else {
+                        text = `<strong>${actor}</strong> added label <span class="activity-badge">${labelName}</span>`;
+                    }
+                    break;
+                case 'unlabeled':
+                    icon = '🏷️';
+                    text = `<strong>${actor}</strong> removed label <span class="activity-badge">${event.label?.name || ''}</span>`;
+                    break;
+                case 'assigned':
+                    icon = '👤';
+                    text = `<strong>${actor}</strong> assigned <span class="activity-badge">${event.assignee?.login || 'someone'}</span>`;
+                    break;
+                case 'unassigned':
+                    icon = '👤';
+                    text = `<strong>${actor}</strong> unassigned <span class="activity-badge">${event.assignee?.login || 'someone'}</span>`;
+                    break;
+                case 'closed':
+                    icon = '🔒';
+                    text = `<strong>${actor}</strong> closed this task`;
+                    break;
+                case 'reopened':
+                    icon = '🔓';
+                    text = `<strong>${actor}</strong> reopened this task`;
+                    break;
+                default:
+                    text = `<strong>${actor}</strong> ${event.event}`;
+            }
+            
+            return `
+                <div class="activity-item">
+                    <div class="activity-icon">${icon}</div>
+                    <div class="activity-content">
+                        <div class="activity-text">${text}</div>
+                        <div class="activity-time">${time}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    async addComment() {
+        const textarea = document.getElementById('newComment');
+        const commentText = textarea.value.trim();
+        
+        if (!commentText || !this.currentTaskId) return;
+        
+        const task = this.getTask(this.currentTaskId);
+        if (!task) return;
+        
+        try {
+            await this.apiRequest(`/issues/${task.issueNumber}/comments`, {
+                method: 'POST',
+                body: JSON.stringify({ body: commentText })
+            });
+            
+            textarea.value = '';
+            await this.loadCommentsAndActivity(task.issueNumber);
+        } catch (error) {
+            this.showError('Failed to add comment: ' + error.message);
+        }
+    }
