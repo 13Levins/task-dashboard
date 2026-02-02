@@ -57,8 +57,9 @@ header {
 }
 
 .icon-btn {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
+    background: var(--accent-blue);
+    color: var(--bg-primary);  /* Add this for better contrast */
+    border: 1px solid var(--accent-blue);
     border-radius: 6px;
     padding: 0.5rem 0.75rem;
     cursor: pointer;
@@ -67,7 +68,8 @@ header {
 }
 
 .icon-btn:hover {
-    background: var(--border-color);
+    background: #4a91e0;  /* Slightly darker blue on hover */
+    border-color: #4a91e0;
 }
 
 /* Sidebar */
