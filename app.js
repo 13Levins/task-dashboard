@@ -308,7 +308,7 @@ class TaskDashboard {
         
         // Add archive button for tasks in Done column
         const archiveButtonHTML = task.status === 'done' 
-            ? `<button class="btn-archive" onclick="dashboard.archiveTask('${task.id}'); event.stopPropagation();" title="Archive this task">📦 Archive</button>`
+            ? `<button class="btn-archive" onclick="dashboard.archiveTask('${task.id}'); event.stopPropagation();" title="Archive this task">Archive</button>`
             : '';
         
         return `
