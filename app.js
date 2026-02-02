@@ -6,11 +6,13 @@ class TaskDashboard {
         this.repo = '13Levins/task-dashboard';
         this.token = localStorage.getItem('github_token');
         this.issues = [];
+        this.archivedIssues = [];
         this.tips = [];
         this.currentTaskId = null;
         this.currentTipId = null;
         this.draggedTask = null;
         this.currentView = 'dashboard';
+        this.currentProjectFilter = localStorage.getItem('project_filter') || 'all';
         
         this.init();
     }
@@ -33,6 +35,12 @@ class TaskDashboard {
             await this.fetchIssues();
             this.renderAllTasks();
             this.updateAllCounts();
+            
+            // Set project filter dropdown to saved value
+            const filterDropdown = document.getElementById('projectFilter');
+            if (filterDropdown) {
+                filterDropdown.value = this.currentProjectFilter;
+            }
             
             // Set initial view to dashboard
             this.switchView('dashboard');
@@ -73,17 +81,27 @@ class TaskDashboard {
     }
 
     async fetchIssues() {
-        // Fetch open and closed issues with our labels
-        const [open, closed] = await Promise.all([
+        // Fetch open, closed (done), and archived issues
+        const [open, closed, archived] = await Promise.all([
             this.apiRequest('/issues?state=open&per_page=100'),
-            this.apiRequest('/issues?state=closed&labels=done&per_page=100')
+            this.apiRequest('/issues?state=closed&labels=done&per_page=100'),
+            this.apiRequest('/issues?state=closed&labels=archived&per_page=100')
         ]);
         
         this.issues = [...open, ...closed]
             .filter(issue => {
                 if (issue.pull_request) return false; // Exclude PRs
                 const labels = issue.labels.map(l => l.name);
-                // Exclude TIPs (workshop items)
+                // Exclude TIPs and archived
+                if (labels.includes('tip') || labels.includes('tip-archived') || labels.includes('archived')) return false;
+                return true;
+            })
+            .map(issue => this.issueToTask(issue));
+        
+        this.archivedIssues = archived
+            .filter(issue => {
+                if (issue.pull_request) return false;
+                const labels = issue.labels.map(l => l.name);
                 if (labels.includes('tip') || labels.includes('tip-archived')) return false;
                 return true;
             })
@@ -95,7 +113,9 @@ class TaskDashboard {
         
         // Determine status from labels
         let status = 'todo';
-        if (labels.includes('done') || issue.state === 'closed') {
+        if (labels.includes('archived')) {
+            status = 'archived';
+        } else if (labels.includes('done') || issue.state === 'closed') {
             status = 'done';
         } else if (labels.includes('in-progress')) {
             status = 'in-progress';
@@ -113,6 +133,13 @@ class TaskDashboard {
         if (labels.includes('priority:high')) priority = 'high';
         else if (labels.includes('priority:low')) priority = 'low';
         else if (labels.includes('priority:medium')) priority = 'medium';
+        
+        // Determine project from labels
+        let project = '';
+        if (labels.includes('project:dashboard')) project = 'dashboard';
+        else if (labels.includes('project:ptm')) project = 'ptm';
+        else if (labels.includes('project:insider-tracker')) project = 'insider-tracker';
+        else if (labels.includes('project:linkedin-tools')) project = 'linkedin-tools';
 
         // Extract due date from body if present
         const dueDateMatch = issue.body?.match(/📅 Due: (\d{4}-\d{2}-\d{2})/);
@@ -131,6 +158,7 @@ class TaskDashboard {
             dueDate,
             priority,
             status,
+            project,
             createdAt: issue.created_at,
             url: issue.html_url
         };
@@ -247,7 +275,16 @@ class TaskDashboard {
             container.innerHTML = '';
         });
         
-        this.issues.forEach(task => this.renderTask(task));
+        // Filter by project if needed
+        const filteredTasks = this.getFilteredTasks();
+        filteredTasks.forEach(task => this.renderTask(task));
+    }
+    
+    getFilteredTasks() {
+        if (this.currentProjectFilter === 'all') {
+            return this.issues;
+        }
+        return this.issues.filter(task => task.project === this.currentProjectFilter);
     }
 
     renderTask(task) {
@@ -267,16 +304,40 @@ class TaskDashboard {
         const dueDateHTML = task.dueDate ? this.getDueDateHTML(task.dueDate) : '';
         const assigneeHTML = task.assignee ? this.getAssigneeHTML(task.assignee) : '';
         const descriptionHTML = task.description ? `<p>${this.escapeHTML(task.description)}</p>` : '';
+        const projectHTML = task.project ? this.getProjectBadgeHTML(task.project) : '';
+        
+        // Add archive button for tasks in Done column
+        const archiveButtonHTML = task.status === 'done' 
+            ? `<button class="btn-archive" onclick="dashboard.archiveTask('${task.id}'); event.stopPropagation();" title="Archive this task">📦 Archive</button>`
+            : '';
         
         return `
             <h4>${this.escapeHTML(task.title)}</h4>
             ${descriptionHTML}
             <div class="task-meta">
+                ${projectHTML}
                 ${assigneeHTML}
                 ${dueDateHTML}
                 <a href="${task.url}" target="_blank" class="issue-link" title="View on GitHub">#${task.issueNumber}</a>
             </div>
+            ${archiveButtonHTML}
         `;
+    }
+    
+    getProjectBadgeHTML(project) {
+        const icons = {
+            'dashboard': '📊',
+            'ptm': '🎨',
+            'insider-tracker': '📈',
+            'linkedin-tools': '💼'
+        };
+        const names = {
+            'dashboard': 'Dashboard',
+            'ptm': 'PTM',
+            'insider-tracker': 'Insider Tracker',
+            'linkedin-tools': 'LinkedIn'
+        };
+        return `<span class="project-badge project-${project}">${icons[project] || ''} ${names[project] || project}</span>`;
     }
 
     getAssigneeHTML(assignee) {
@@ -524,6 +585,22 @@ class TaskDashboard {
                 localStorage.removeItem('github_token');
                 location.reload();
             }
+        });
+        
+        // Project filter
+        document.getElementById('projectFilter')?.addEventListener('change', (e) => {
+            this.currentProjectFilter = e.target.value;
+            localStorage.setItem('project_filter', e.target.value);
+            this.renderAllTasks();
+            this.updateAllCounts();
+            if (this.currentView === 'archive') {
+                this.renderArchive();
+            }
+        });
+        
+        // Archive search
+        document.getElementById('archiveSearch')?.addEventListener('input', () => {
+            this.renderArchive();
         });
 
         // Add comment button
@@ -1198,14 +1275,22 @@ class TaskDashboard {
         
         const dashboardView = document.getElementById('dashboardView');
         const workshopView = document.getElementById('workshopView');
+        const archiveView = document.getElementById('archiveView');
         
         if (view === 'dashboard') {
             dashboardView.style.display = 'grid';
             workshopView.style.display = 'none';
+            archiveView.style.display = 'none';
         } else if (view === 'workshop') {
             dashboardView.style.display = 'none';
             workshopView.style.display = 'block';
+            archiveView.style.display = 'none';
             this.fetchTips().then(() => this.renderTips());
+        } else if (view === 'archive') {
+            dashboardView.style.display = 'none';
+            workshopView.style.display = 'none';
+            archiveView.style.display = 'block';
+            this.renderArchive();
         }
         
         // Update sidebar active state
@@ -1216,6 +1301,96 @@ class TaskDashboard {
                 btn.classList.remove('active');
             }
         });
+    }
+    
+    async archiveTask(taskId) {
+        if (!confirm('Archive this task? It will be moved to the Archive page.')) return;
+        
+        const task = this.getTask(taskId);
+        if (!task) return;
+        
+        this.showLoading(true);
+        try {
+            // Add archived label
+            const labels = this.getLabelsForTask(task);
+            labels.push('archived');
+            
+            await this.apiRequest(`/issues/${task.issueNumber}`, {
+                method: 'PATCH',
+                body: JSON.stringify({
+                    labels: labels
+                })
+            });
+            
+            // Move from issues to archivedIssues
+            this.issues = this.issues.filter(t => t.id !== taskId);
+            task.status = 'archived';
+            this.archivedIssues.push(task);
+            
+            // Re-render
+            this.removeTaskElement(taskId);
+            this.updateColumnCount('done');
+            
+        } catch (error) {
+            this.showError('Failed to archive task: ' + error.message);
+        }
+        this.showLoading(false);
+    }
+    
+    renderArchive() {
+        const container = document.getElementById('archiveContent');
+        const searchTerm = document.getElementById('archiveSearch')?.value.toLowerCase() || '';
+        
+        // Filter archived tasks
+        let filtered = this.archivedIssues;
+        
+        // Apply project filter
+        if (this.currentProjectFilter !== 'all') {
+            filtered = filtered.filter(task => task.project === this.currentProjectFilter);
+        }
+        
+        // Apply search
+        if (searchTerm) {
+            filtered = filtered.filter(task => 
+                task.title.toLowerCase().includes(searchTerm) ||
+                task.description.toLowerCase().includes(searchTerm)
+            );
+        }
+        
+        if (filtered.length === 0) {
+            container.innerHTML = `
+                <div class="archive-empty">
+                    <p>No archived tasks found.</p>
+                </div>
+            `;
+            return;
+        }
+        
+        // Sort by archived date (most recent first)
+        filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        
+        container.innerHTML = filtered.map(task => this.getArchiveTaskHTML(task)).join('');
+    }
+    
+    getArchiveTaskHTML(task) {
+        const date = new Date(task.createdAt).toLocaleDateString();
+        const assigneeHTML = task.assignee ? this.getAssigneeHTML(task.assignee) : '';
+        const projectHTML = task.project ? this.getProjectBadgeHTML(task.project) : '';
+        
+        return `
+            <div class="archive-task-card priority-${task.priority}">
+                <div class="archive-task-header">
+                    <h4>${this.escapeHTML(task.title)}</h4>
+                    <span class="archive-date">${date}</span>
+                </div>
+                <p class="archive-task-description">${this.escapeHTML(task.description || '')}</p>
+                <div class="archive-task-meta">
+                    ${projectHTML}
+                    ${assigneeHTML}
+                    <a href="${task.url}" target="_blank" class="issue-link">#${task.issueNumber}</a>
+                </div>
+            </div>
+        `;
     }
 
     toggleArchivedTips() {
