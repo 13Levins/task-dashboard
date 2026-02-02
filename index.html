@@ -12,6 +12,18 @@
             <h1>😏 Task Dashboard</h1>
             <p class="subtitle">Sam & Milo's shared workspace</p>
         </div>
+        <div class="header-center">
+            <div class="project-filter">
+                <label for="projectFilter">Project:</label>
+                <select id="projectFilter">
+                    <option value="all">All Projects</option>
+                    <option value="dashboard">📊 Dashboard</option>
+                    <option value="ptm">🎨 PTM</option>
+                    <option value="insider-tracker">📈 Insider Tracker</option>
+                    <option value="linkedin-tools">💼 LinkedIn Tools</option>
+                </select>
+            </div>
+        </div>
         <div class="header-right">
             <button class="icon-btn" id="refreshBtn" title="Refresh">Refresh</button>
             <button class="icon-btn" id="logoutBtn" title="Clear token">Clear Token</button>
@@ -35,6 +47,10 @@
                 <button class="sidebar-btn" data-view="workshop">
                     <span class="sidebar-icon">🔧</span>
                     <span class="sidebar-label">Task Workshop</span>
+                </button>
+                <button class="sidebar-btn" data-view="archive">
+                    <span class="sidebar-icon">📦</span>
+                    <span class="sidebar-label">Archive</span>
                 </button>
                 <button class="sidebar-btn" data-action="create-task">
                     <span class="sidebar-icon">➕</span>
@@ -92,6 +108,20 @@
                     Show Archived TIPs
                 </button>
             </div>
+        </main>
+        
+        <!-- Archive View -->
+        <main class="archive" id="archiveView" style="display: none;">
+            <div class="archive-header">
+                <h2>📦 Archive</h2>
+                <p class="subtitle">Completed and archived tasks</p>
+            </div>
+            
+            <div class="archive-filters">
+                <input type="text" id="archiveSearch" placeholder="Search archived tasks..." />
+            </div>
+            
+            <div id="archiveContent" class="archive-content"></div>
         </main>
     </div>
 
